@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloud Bill Weather Report</title>
+<meta name="description" content="Should budgets warn before a bill overspends? A Monte Carlo forecast alert, tuned by how sure it must be. APM Lab by Shriya Shekatkar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Caveat:wght@600;700&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,800;1,9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#faf7f2; --ink:#1e1d22; --muted:#55525c;
+  --night:#1c1a1f; --slat:#29262c; --lotus:#f06ba8; --lotus-d:#d81b72; --lotus-l:#ffc6de; --leaf:#4f7a3c;
+  --card:#f2f1ee; --green:#1d5a36; --green-l:#2f7a4c;
+  --mint:#93f2c8; --teal:#0f4c52; --teal-d:#0a3539;
+  --gpink:#ff4fa8; --glime:#b8ef3e; --gcyan:#66e0ee; --gtang:#ffa53d;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 Inter,system-ui,sans-serif;overflow-x:hidden}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+h2{font-family:Caveat,cursive;font-weight:700;color:var(--green);font-size:clamp(2.2rem,5vw,3rem);line-height:1.05;margin:0 0 .3em}
+h3{margin:0 0 .4em;font-size:1.05rem}
+section{padding:56px 0}
+.grain{position:relative;isolation:isolate}
+.grain::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;opacity:.22;mix-blend-mode:overlay;
+ background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.9'/></svg>")}
+
+/* HERO — lotus bouquet pin */
+.hero{background:var(--night);color:#fff;overflow:hidden;
+ background-image:repeating-linear-gradient(90deg,var(--night) 0 26px,var(--slat) 26px 30px,#151317 30px 32px)}
+.hero .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:24px;align-items:center;padding-top:64px;padding-bottom:56px;position:relative;z-index:3}
+.eyebrow{display:inline-block;font-weight:700;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--lotus-l);border:1px solid rgba(255,198,222,.45);padding:5px 12px;border-radius:999px}
+.hero h1{font-family:Fraunces,serif;font-weight:800;font-size:clamp(2.3rem,6.4vw,4.6rem);line-height:1.02;margin:18px 0 14px;letter-spacing:-.01em}
+.hero h1 em{font-style:italic;font-weight:600;color:var(--lotus)}
+.hero p.lede{font-size:1.1rem;color:#efe6ec;max-width:36em;margin:0 0 16px}
+.mirror{background:rgba(240,107,168,.12);border-left:4px solid var(--lotus);padding:10px 14px;border-radius:0 10px 10px 0;color:#f6e9f0;font-size:.95rem;margin:0 0 18px}
+.mirror a{color:var(--lotus-l)}
+.byline{font-weight:600;color:#fff}
+.byline span{display:block;font-weight:400;color:#d9cdd4;font-size:.92rem}
+.bouquet{width:100%;max-width:420px;justify-self:center}
+.bouquet .sway{transform-origin:210px 420px;animation:sway 6s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:rotate(-1.4deg)}50%{transform:rotate(1.4deg)}}
+
+/* CARDS — moneyfesting pin */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+.card{background:var(--card);border-radius:22px;padding:20px 22px;box-shadow:0 1px 0 #e3e1dc,0 8px 22px rgba(30,29,34,.06);position:relative}
+.card .tag{font-family:Caveat,cursive;font-size:1.6rem;color:var(--green);line-height:1;margin-bottom:6px;display:inline-block;position:relative}
+.card .tag::after{content:"";position:absolute;left:0;right:-6px;bottom:-4px;height:6px;background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8' preserveAspectRatio='none'><path d='M1 5 C 20 1, 40 7, 60 4 S 100 2, 119 5' fill='none' stroke='%231d5a36' stroke-width='2' stroke-linecap='round'/></svg>") center/100% 100% no-repeat}
+.card p,.card li{color:#2c2a30;font-size:.95rem}
+.card ul{margin:.3em 0 0;padding-left:1.1em}
+.card.tall{grid-row:span 2}
+.pin-cap{font-size:.78rem;color:var(--muted);margin-top:10px;display:flex;gap:8px;align-items:center}
+.pin-cap b{color:var(--ink)}
+.btn{font:600 .95rem Inter,sans-serif;cursor:pointer;border:2px solid var(--green);color:var(--green);background:var(--card);padding:9px 16px;border-radius:999px;transition:transform .15s, background .15s}
+.btn:hover{background:#e6eee7;transform:translateY(-1px)}
+.btn.solid{background:var(--green);color:#fff}
+.btn.solid:hover{background:var(--green-l)}
+.btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--gpink);outline-offset:2px}
+
+/* SIM ROOM — 111 pin */
+.room{background:var(--mint);color:var(--teal-d)}
+.room h2{font-family:Anton,Impact,sans-serif;font-weight:400;color:var(--teal);text-transform:uppercase;font-size:clamp(2.4rem,7vw,4.4rem);letter-spacing:.01em}
+.room .sub{color:var(--teal-d);max-width:46em}
+.big111{font-family:Anton,Impact,sans-serif;color:var(--teal);font-size:clamp(4rem,14vw,9rem);line-height:.9}
+.roomgrid{display:grid;grid-template-columns:300px 1fr;gap:22px;margin-top:22px}
+.controls{background:rgba(255,255,255,.55);border:2px solid var(--teal);border-radius:18px;padding:16px}
+.ctrl{margin-bottom:14px}
+.ctrl label{display:flex;justify-content:space-between;font-weight:600;font-size:.9rem;color:var(--teal-d)}
+.ctrl output{font-family:Anton,Impact,sans-serif;font-weight:400;font-size:1.05rem;color:var(--teal)}
+.ctrl small{display:block;color:#1e4f53;font-size:.78rem;line-height:1.35}
+input[type=range]{width:100%;accent-color:var(--teal)}
+select{width:100%;padding:6px;border-radius:8px;border:2px solid var(--teal);background:#fff;font:inherit;color:var(--teal-d)}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.room .btn{border-color:var(--teal);color:var(--teal);background:#fff}
+.room .btn.solid{background:var(--teal);color:#fff}
+.panel{background:#fff;border-radius:18px;padding:14px;border:2px solid var(--teal);min-width:0}
+.panel canvas{width:100%;display:block}
+.cap{font-size:.8rem;color:#1e4f53;margin:6px 2px 0}
+.handle{font-weight:700;color:var(--teal);font-size:.85rem;margin-top:12px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.8rem;color:var(--teal-d);margin:4px 2px 8px}
+.legend i{display:inline-block;width:18px;height:4px;border-radius:2px;vertical-align:middle;margin-right:5px}
+
+/* KPI badges — candy gem pin */
+.gems{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0}
+.gem{position:relative;border-radius:50%;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px;color:#151418;
+ box-shadow:inset -6px -10px 18px rgba(0,0,0,.18), inset 8px 10px 16px rgba(255,255,255,.55), 0 6px 0 rgba(15,76,82,.25), 0 12px 22px rgba(0,0,0,.12);transition:transform .3s}
+.gem::before{content:"";position:absolute;top:12%;left:20%;width:32%;height:20%;border-radius:50%;background:radial-gradient(closest-side,rgba(255,255,255,.95),rgba(255,255,255,0));transform:rotate(-25deg)}
+.gem .v{font-family:Anton,Impact,sans-serif;font-size:clamp(1.3rem,3.2vw,2rem);line-height:1}
+.gem .k{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;max-width:9em;line-height:1.2}
+.gem.p{background:radial-gradient(circle at 35% 30%,#ff9fd0,var(--gpink) 60%,#e2338c)}
+.gem.l{background:radial-gradient(circle at 35% 30%,#e3ff9c,var(--glime) 60%,#93cc22);transform:rotate(-3deg)}
+.gem.c{background:radial-gradient(circle at 35% 30%,#c4f6fb,var(--gcyan) 60%,#33c4d6);transform:rotate(2deg)}
+.gem.t{background:radial-gradient(circle at 35% 30%,#ffd39d,var(--gtang) 60%,#f18a12)}
+.gem.pop{animation:pop .45s ease}
+@keyframes pop{0%{transform:scale(.9)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
+.weather{display:flex;align-items:center;gap:14px;background:#fff;border:2px solid var(--teal);border-radius:18px;padding:10px 16px;margin-top:14px}
+.weather svg{flex:none}
+.weather .wt{font-family:Anton,Impact,sans-serif;font-size:1.6rem;color:var(--teal);line-height:1.1}
+.weather .wd{font-size:.88rem;color:#1e4f53}
+
+.bt{margin-top:22px}
+.bt table{width:100%;border-collapse:collapse;font-size:.88rem;background:#fff;border-radius:12px;overflow:hidden}
+.bt th,.bt td{padding:7px 8px;text-align:right;border-bottom:1px solid #d9efe6}
+.bt th:first-child,.bt td:first-child{text-align:left}
+.bt th{background:var(--teal);color:#fff;font-weight:600}
+.bt tr.pick td{background:#e9fdf4;font-weight:700}
+.bt tr.cur td:first-child::after{content:" ← your setting";color:var(--lotus-d);font-weight:700;font-size:.75rem}
+.tablewrap{overflow-x:auto;border-radius:12px;border:2px solid var(--teal)}
+
+/* MEMO */
+.memo{background:var(--card);border-radius:22px;padding:26px;margin-top:26px;max-width:860px;box-shadow:0 8px 24px rgba(30,29,34,.07);position:relative}
+.memo .stamp{position:absolute;right:18px;top:-16px;font-family:Caveat,cursive;font-size:1.4rem;color:#fff;background:var(--green);padding:2px 16px;border-radius:999px;transform:rotate(3deg)}
+.memo dt{font-family:Caveat,cursive;font-size:1.5rem;color:var(--green);margin-top:10px}
+.memo dd{margin:0 0 6px}
+.vp{background:#fff;border-left:5px solid var(--lotus-d);padding:12px 14px;border-radius:0 12px 12px 0;font-weight:600;margin-top:14px}
+
+/* MATH + CODE */
+.mathgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.formula{font-family:"Fraunces",serif;font-size:1.05rem;background:#fff;border-radius:12px;padding:10px 12px;margin:8px 0;color:var(--teal-d);border:1px dashed var(--green)}
+pre{background:#17161a;color:#f3eef2;border-radius:16px;padding:16px;overflow-x:auto;font-size:.82rem;line-height:1.5;margin:0}
+pre .c{color:#9fd7b7}
+pre .k{color:#ff9fd0}
+.codegrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.codegrid > div{min-width:0}
+
+footer{background:var(--night);color:#e8e1e6;padding:30px 0 34px;font-size:.92rem}
+footer a{color:var(--lotus-l)}
+.credits{font-size:11px;color:#b9aeb6;margin-top:12px;line-height:1.6}
+.credits a{color:#d6c9d1}
+
+@media (max-width:860px){
+ .hero .wrap{grid-template-columns:1fr}
+ .bouquet{max-width:280px;order:-1}
+ .roomgrid{grid-template-columns:1fr}
+ .codegrid{grid-template-columns:1fr}
+ .gems{grid-template-columns:repeat(2,1fr)}
+ .card.tall{grid-row:auto}
+}
+@media (max-width:420px){
+ .wrap{padding:0 16px}
+ section{padding:42px 0}
+ .memo{padding:20px 16px}
+ .gem .k{font-size:.64rem}
+ .weather .wt{font-size:1.2rem}
+ .weather svg{width:48px;height:48px}
+}
+@media (prefers-reduced-motion:reduce){
+ *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+
+<!-- 1. HERO -->
+<header class="hero grain">
+ <div class="wrap">
+  <div>
+   <span class="eyebrow">APM Lab · cost-and-capacity</span>
+   <h1>I warn people <em>before</em> the storm, not after the flood.</h1>
+   <p class="lede">A cloud-bill weather report: should budgets send a <b>forecast alert</b> when a month is <i>likely</i> to overspend, and how sure should we be before we send it?</p>
+   <p class="mirror">Mirrors: <a href="https://docs.databricks.com/aws/en/release-notes/product/2026/october" target="_blank" rel="noopener">Databricks budgets now support ACLs (Budget Manager / Budget Viewer roles), Oct 16, 2026</a>. More people now watch each budget, so every alert email costs more attention.</p>
+   <p class="byline">Shriya Shekatkar<span>UCLA · Stats 102C Monte Carlo Methods</span></p>
+  </div>
+  <svg class="bouquet" viewBox="0 0 420 470" role="img" aria-label="Illustration: a pink lotus bouquet in a hot-pink box, drawn in SVG">
+   <defs>
+    <linearGradient id="pet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd0e4"/><stop offset=".45" stop-color="#f06ba8"/><stop offset="1" stop-color="#c81765"/></linearGradient>
+    <linearGradient id="pet2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe3ef"/><stop offset="1" stop-color="#e64b92"/></linearGradient>
+    <linearGradient id="box" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b3125c"/><stop offset=".5" stop-color="#e2307f"/><stop offset="1" stop-color="#a80f55"/></linearGradient>
+    <g id="lotus">
+     <path d="M0 0 C -26 -20 -30 -58 0 -92 C 30 -58 26 -20 0 0Z" fill="url(#pet)"/>
+     <path d="M0 0 C -46 -6 -62 -40 -48 -76 C -18 -60 -4 -30 0 0Z" fill="url(#pet2)"/>
+     <path d="M0 0 C 46 -6 62 -40 48 -76 C 18 -60 4 -30 0 0Z" fill="url(#pet2)"/>
+     <path d="M0 -2 C -60 6 -84 -18 -86 -44 C -52 -40 -20 -24 0 -2Z" fill="#f48bbb"/>
+     <path d="M0 -2 C 60 6 84 -18 86 -44 C 52 -40 20 -24 0 -2Z" fill="#f48bbb"/>
+     <path d="M0 -20 C -4 -40 -2 -62 0 -80" stroke="#ffd7e8" stroke-width="2" fill="none" opacity=".7"/>
+    </g>
+    <g id="bud"><path d="M0 0 C -16 -16 -16 -46 0 -66 C 16 -46 16 -16 0 0Z" fill="url(#pet)"/><path d="M0 -6 C -3 -26 -2 -46 0 -60" stroke="#ffd7e8" stroke-width="1.5" fill="none"/></g>
+   </defs>
+   <g class="sway">
+    <g stroke="#4f7a3c" stroke-width="5" fill="none" stroke-linecap="round">
+     <path d="M210 330 C 200 260 150 210 110 170"/><path d="M210 330 C 215 250 230 190 300 150"/><path d="M210 330 C 205 250 200 160 205 100"/>
+     <path d="M210 330 C 190 270 120 260 70 250"/><path d="M210 330 C 240 280 300 260 350 240"/><path d="M210 330 C 230 260 260 220 260 70"/><path d="M210 330 C 190 240 160 120 150 70"/>
+    </g>
+    <ellipse cx="96" cy="290" rx="52" ry="22" fill="#5f8d47" transform="rotate(-18 96 290)"/>
+    <ellipse cx="320" cy="292" rx="52" ry="22" fill="#4f7a3c" transform="rotate(16 320 292)"/>
+    <use href="#bud" x="150" y="78"/><use href="#bud" x="262" y="76"/><use href="#bud" x="352" y="244" transform="rotate(14 352 244)"/>
+    <use href="#lotus" x="110" y="176" transform="rotate(-18 110 176)"/>
+    <use href="#lotus" x="300" y="158" transform="rotate(16 300 158)"/>
+    <use href="#lotus" x="206" y="112"/>
+    <use href="#lotus" x="70" y="262" transform="rotate(-34 70 262) scale(.85)"/>
+    <use href="#lotus" x="214" y="250" transform="scale(1)"/>
+    <circle cx="250" cy="226" r="16" fill="#fff6e6"/><circle cx="250" cy="226" r="6" fill="#f2c94c"/>
+   </g>
+   <path d="M118 318 L302 318 L288 462 L132 462Z" fill="url(#box)"/>
+   <rect x="112" y="306" width="196" height="22" rx="4" fill="#ee4c93"/>
+   <rect x="176" y="372" width="68" height="44" rx="3" fill="#fbe9f1"/>
+   <text x="210" y="392" text-anchor="middle" font-family="Fraunces,serif" font-size="11" fill="#a80f55">70%</text>
+   <text x="210" y="408" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" fill="#a80f55">odds</text>
+  </svg>
+ </div>
+</header>
+
+<main>
+<!-- 2. THE DECISION -->
+<section id="decision">
+ <div class="wrap">
+  <h2>The decision</h2>
+  <p style="max-width:46em;color:var(--muted)">One hard call created by the launch: budget alerts today fire after spend <i>crosses</i> a threshold. With team leads now added as Budget Viewers, should we also send a forecast alert, and how confident must the forecast be before it emails anyone?</p>
+  <div class="cards">
+   <div class="card tall"><span class="tag">customer problem</span>
+    <p>A platform lead sets a $9k monthly budget for a team's serverless jobs, SQL and pipelines. A runaway job on day 9 doubles daily spend. The threshold email lands on day 24, up to a day late, when the money is already gone. Finance asks, "why didn't anyone warn us?"</p>
+    <p>What admins want is a heads-up while there is still time to act: pause a schedule, right-size a warehouse, or raise the budget on purpose.</p>
+    <div class="pin-cap"><b>pinned to</b> customer pain</div>
+   </div>
+   <div class="card"><span class="tag">proposed change</span>
+    <p>Add an opt-in <b>"likely to exceed"</b> alert to each budget. Every day, simulate the rest of the month from recent usage. If the odds of ending over the threshold reach <b>C%</b>, email once per month with the odds and the top drivers.</p>
+   </div>
+   <div class="card"><span class="tag">success metric</span>
+    <p><b>Early-warning rate</b>: share of over-budget months where admins are warned at least <b>5 days</b> before spend crosses the line. Target ≥ 60% (today ≈ 0%).</p>
+   </div>
+   <div class="card"><span class="tag">guardrails</span>
+    <ul>
+     <li>False alarms ≤ <b>15%</b> of on-budget months</li>
+     <li>Recall (any warning before the cross) ≥ <b>70%</b></li>
+     <li>Median lead time ≥ <b>5 days</b></li>
+     <li>≤ <b>1</b> forecast email per budget per month</li>
+    </ul>
+   </div>
+   <div class="card"><span class="tag">stakeholders</span>
+    <p>Account and workspace admins (budget owners), the new Budget Viewers (team leads), FinOps and finance, the billing platform engineers who own the usage tables, support (who field "surprise bill" tickets), and account executives.</p>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- 3. SIMULATION ROOM -->
+<section class="room grain" id="sim">
+ <div class="wrap" style="position:relative;z-index:3">
+  <div class="big111" aria-hidden="true">30 days</div>
+  <h2>A new billing cycle is quietly beginning</h2>
+  <p class="sub">One fictional customer, four serverless workload types. Each day's run count is drawn by inverse-CDF from a weekday/weekend table; each run's cost is a convolution of exponentials (an Erlang). Thousands of possible rest-of-month futures give the month-end fan. All numbers are simulated.</p>
+
+  <div class="gems" aria-live="polite">
+   <div class="gem p" id="g1"><div class="v" id="kP50">-</div><div class="k">P50 month-end</div></div>
+   <div class="gem l" id="g2"><div class="v" id="kP90">-</div><div class="k">P90 month-end</div></div>
+   <div class="gem c" id="g3"><div class="v" id="kOver">-</div><div class="k">chance of overspend</div></div>
+   <div class="gem t" id="g4"><div class="v" id="kAlert">-</div><div class="k" id="kAlertK">forecast alert</div></div>
+  </div>
+
+  <div class="roomgrid">
+   <div class="controls">
+    <div class="ctrl"><label for="day">Today is day <output id="dayO">10</output></label><input id="day" type="range" min="3" max="28" value="10"><small>How much of the month is already known.</small></div>
+    <div class="ctrl"><label for="budget">Budget threshold <output id="budgetO">$9.0k</output></label><input id="budget" type="range" min="6000" max="14000" step="250" value="9000"></div>
+    <div class="ctrl"><label for="pct">Alert when odds of overspend ≥ <output id="pctO">70%</output></label>
+     <select id="pct"><option value="25">25% (jumpy)</option><option value="50">50% (coin flip)</option><option value="70" selected>70%</option><option value="85">85%</option><option value="95">95% (very sure)</option></select><small>Same as: the (100 − odds) percentile of the forecast is above the budget.</small></div>
+    <div class="ctrl"><label for="burst">Workload burstiness <output id="burstO">3</output></label><input id="burst" type="range" min="1" max="6" value="3"><small>Erlang shape k. 1 = spiky single-stage runs, 6 = steady multi-stage runs (same mean cost).</small></div>
+    <div class="ctrl"><label for="spike">Runaway-job risk <output id="spikeO">40%</output></label><input id="spike" type="range" min="0" max="80" step="5" value="40"><small>Chance this month has a runaway job that adds about $300/day for a geometric number of days.</small></div>
+    <div class="btnrow"><button class="btn solid" id="reroll">New month (reseed)</button><button class="btn" id="runbt">Backtest 160 months</button></div>
+    <p class="handle">seed <span id="seedO">138</span> · @cloud-bill-weather</p>
+   </div>
+   <div style="min-width:0">
+    <div class="panel">
+     <h3 style="color:var(--teal)">Cumulative spend: actual so far + simulated futures</h3>
+     <div class="legend"><span><i style="background:#0f4c52"></i>actual</span><span><i style="background:rgba(102,224,238,.9)"></i>sample futures</span><span><i style="background:rgba(184,239,62,.9);height:10px"></i>P10–P90 band</span><span><i style="background:#d81b72"></i>budget</span></div>
+     <canvas id="fan" height="300" aria-label="Fan chart of simulated cumulative spend paths"></canvas>
+     <p class="cap" id="fanCap"></p>
+    </div>
+    <div class="panel" style="margin-top:14px">
+     <h3 style="color:var(--teal)">Where the month lands (2,000 futures)</h3>
+     <canvas id="hist" height="170" aria-label="Histogram of simulated month-end spend"></canvas>
+    </div>
+    <div class="weather" id="weather"></div>
+   </div>
+  </div>
+
+  <div class="bt">
+   <h3 style="color:var(--teal);font-size:1.3rem">Backtest: how sure should the forecast be before it emails?</h3>
+   <p class="sub" style="font-size:.92rem">160 simulated customer-months with random growth, budgets set 5–25% above expected spend, and runaway jobs at your risk setting. Every day from day 5 the forecaster re-simulates the rest of the month; the alert fires the first day the odds of overspend reach the threshold. Lead = days between the warning and the actual cross.</p>
+   <div class="tablewrap"><table id="btTable"><thead><tr><th>Odds trigger</th><th>Early-warning rate (≥5d)</th><th>Recall</th><th>False alarms</th><th>Median lead</th></tr></thead><tbody><tr><td colspan="5">Press "Backtest 160 months".</td></tr></tbody></table></div>
+   <p class="cap" id="btCap"></p>
+  </div>
+ </div>
+</section>
+
+<!-- 4. MEMO -->
+<section id="memo">
+ <div class="wrap">
+  <h2>Director memo</h2>
+  <div class="memo"><span class="stamp">auto-rewritten</span>
+   <dl id="memoBody"></dl>
+   <div class="vp" id="vpLine"></div>
+  </div>
+ </div>
+</section>
+
+<!-- 5. MATH -->
+<section id="math" style="padding-top:10px">
+ <div class="wrap">
+  <h2>The math, from my Monte Carlo course</h2>
+  <div class="mathgrid">
+   <div class="card"><span class="tag">inverse CDF, discrete</span>
+    <p>To draw "how many jobs run today", list the possible counts with their probabilities, stack the cumulative sums on [0,1], drop a uniform U, and take the first count whose cumulative sum passes U. Weekdays and weekends get different tables.</p>
+    <div class="formula">N = min{ n : F(n) ≥ U },  U ~ Unif(0,1)</div>
+   </div>
+   <div class="card"><span class="tag">inverse CDF, exponential</span>
+    <p>A single-stage run's cost is memoryless: most are cheap, a few are long. Invert the exponential CDF and you get it from one uniform. A runaway job's length uses the geometric version of the same trick.</p>
+    <div class="formula">X = −θ · ln(U)   ·   L = ⌈ ln U / ln(1−p) ⌉</div>
+   </div>
+   <div class="card"><span class="tag">convolution</span>
+    <p>A real run has stages (spin-up, read, transform, write). Adding k independent exponential stages is a convolution, and the sum is Erlang(k, θ): same mean kθ, less spiky as k grows. That's the burstiness slider. Adding up runs, days and workloads is more convolution, and that sum is the month-end bill.</p>
+    <div class="formula">Run = Σ<sub>i=1..k</sub> −θ ln U<sub>i</sub>  ~  Gamma(k, θ)</div>
+   </div>
+   <div class="card"><span class="tag">a shortcut for the backtest</span>
+    <p>Sums of Gammas with the same scale stay Gamma, so N runs of Erlang(k, θ) add up to Gamma(Nk, θ). With Nk in the hundreds, the CLT lets the backtest draw that total with a single Box-Muller normal, about 50× faster, so 160 months × 26 days × 150 futures runs in a blink.</p>
+    <div class="formula">Σ ≈ Nkθ + √(Nk)·θ·Z,  Z = √(−2 ln U₁) cos(2πU₂)</div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- 6. REAL DATA -->
+<section id="real" style="padding-top:10px">
+ <div class="wrap">
+  <h2>How I'd run it on real data</h2>
+  <p style="color:var(--muted);max-width:46em">Illustrative only. Serverless usage lives in <code>system.billing.usage</code> (filter <code>product_features.is_serverless</code>, split by <code>billing_origin_product</code>) joined to <code>system.billing.list_prices</code>. The table <code>finops.sandbox.*</code> is a made-up name.</p>
+  <div class="codegrid">
+   <div>
+<pre><span class="c">-- 1. Daily run counts and per-run cost, last 90 days</span>
+<span class="k">CREATE OR REPLACE TABLE</span> finops.sandbox.daily_runs <span class="k">AS</span>
+<span class="k">SELECT</span> u.usage_date,
+       u.billing_origin_product         <span class="k">AS</span> workload,
+       dayofweek(u.usage_date) <span class="k">IN</span> (1,7)  <span class="k">AS</span> is_weekend,
+       count(<span class="k">DISTINCT</span> coalesce(u.usage_metadata.job_run_id,
+             u.usage_metadata.dlt_pipeline_id,
+             u.usage_metadata.notebook_id)) <span class="k">AS</span> runs,
+       sum(u.usage_quantity * p.pricing.default) <span class="k">AS</span> list_cost
+<span class="k">FROM</span> system.billing.usage u
+<span class="k">JOIN</span> system.billing.list_prices p
+  <span class="k">ON</span> u.sku_name = p.sku_name
+ <span class="k">AND</span> u.usage_start_time &gt;= p.price_start_time
+ <span class="k">AND</span> (p.price_end_time <span class="k">IS NULL</span>
+      <span class="k">OR</span> u.usage_start_time &lt; p.price_end_time)
+<span class="k">WHERE</span> u.product_features.is_serverless
+  <span class="k">AND</span> u.usage_date &gt;= date_sub(current_date(), 90)
+<span class="k">GROUP BY ALL</span>;
+
+<span class="c">-- 2. Inverse-CDF tables: P(runs = n | workload, weekend)</span>
+<span class="k">SELECT</span> workload, is_weekend, runs,
+       count(*) / sum(count(*)) <span class="k">OVER</span>
+         (<span class="k">PARTITION BY</span> workload, is_weekend) <span class="k">AS</span> p
+<span class="k">FROM</span> finops.sandbox.daily_runs
+<span class="k">GROUP BY ALL</span>;</pre>
+   </div>
+   <div>
+<pre><span class="c"># 3. Simulate the rest of the month (PySpark + NumPy)</span>
+<span class="k">import</span> numpy <span class="k">as</span> np
+rng = np.random.default_rng(111)
+
+<span class="k">def</span> forecast(spent, today, tables, theta, k, rate=1.0,
+             days=30, sims=5000):
+    total = np.full(sims, spent)
+    <span class="k">for</span> d <span class="k">in</span> range(today + 1, days + 1):
+        wknd = (d % 7) <span class="k">in</span> (0, 6)
+        <span class="k">for</span> w, (vals, probs) <span class="k">in</span> tables[wknd].items():
+            n = rng.choice(vals, size=sims, p=probs)   <span class="c"># inverse CDF</span>
+            <span class="c"># Erlang(k) per run, n runs -> Gamma(n*k)</span>
+            total += rate * rng.gamma(n * k[w] + 1e-9, theta[w])
+    <span class="k">return</span> np.percentile(total, [30, 50, 90])
+
+p30, p50, p90 = forecast(spent=4210.0, today=10, ...)
+<span class="k">if</span> p30 &gt; budget  <span class="c"># odds of overspend >= 70%</span>
+   <span class="k">and not</span> already_alerted_this_month:
+    send_forecast_alert(budget_id, odds=(sim &gt; budget).mean())</pre>
+   </div>
+  </div>
+ </div>
+</section>
+</main>
+
+<footer>
+ <div class="wrap">
+  <p><b>Unofficial concept prototype by Shriya Shekatkar. All data is simulated. Not affiliated with any company.</b></p>
+  <p>Part of <a href="https://shriyashekatkar25-byte.github.io/apm-lab/">APM Lab, the full gallery</a> · Stats 102C Ch3 (inverse CDF) + Ch5 (convolution).</p>
+  <p class="credits">Design inspired by:
+   <a href="https://www.pinterest.com/pin/955396508455264102/" target="_blank" rel="noopener">pink lotus bouquet by pipipiiiiiiii</a> ·
+   <a href="https://www.pinterest.com/pin/1147784655065165813/" target="_blank" rel="noopener">“Art is the Culture” by Pa' The Creator</a> ·
+   <a href="https://www.pinterest.com/pin/569635052893126877/" target="_blank" rel="noopener">“111 A new cycle is quietly beginning” saved by Ricky David</a> ·
+   <a href="https://www.pinterest.com/pin/1058416349944497847/" target="_blank" rel="noopener">candy gem makeup, @fairymusee via DΣΣ</a></p>
+ </div>
+</footer>
+
+<script>
+(function(){
+"use strict";
+const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+
+// ---------- seeded RNG (mulberry32) ----------
+function rngFrom(seed){ let a = seed >>> 0; return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ---------- workload model (fictional customer) ----------
+// counts: [values, probs] for weekday / weekend; mean cost per run
+const W = [
+ {name:'Jobs',      wd:[[4,6,8,10],[.2,.35,.3,.15]], we:[[2,4],[.5,.5]],      mean:18},
+ {name:'SQL',       wd:[[10,14,18],[.3,.4,.3]],       we:[[2,4],[.6,.4]],      mean:5},
+ {name:'Pipelines', wd:[[3,4],[.5,.5]],               we:[[3,4],[.5,.5]],      mean:20},
+ {name:'Notebooks', wd:[[2,5,8],[.3,.4,.3]],          we:[[0,1],[.7,.3]],      mean:8}
+];
+W.forEach(w=>{ ['wd','we'].forEach(t=>{ const [v,p]=w[t]; let c=0; w[t+'C']=p.map(x=>c+=x); w[t+'M']=v.reduce((s,x,i)=>s+x*p[i],0); }); });
+const DAYS = 30;
+const isWeekend = d => (d % 7 === 6 || d % 7 === 0);
+function drawCount(r, vals, cum){ const u=r(); for(let i=0;i<cum.length;i++) if(u<=cum[i]) return vals[i]; return vals[vals.length-1]; } // inverse CDF
+function erlang(r, k, theta){ let s=0; for(let i=0;i<k;i++) s += -Math.log(1-r()); return s*theta; }       // convolution of exponentials
+function normal(r){ const u1=1-r(), u2=r(); return Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2); }   // Box-Muller
+function expectedDay(d){ let s=0; for(const w of W){ s += (isWeekend(d)?w.weM:w.wdM)*w.mean; } return s; }
+const EXP_MONTH = (()=>{ let s=0; for(let d=1;d<=DAYS;d++) s+=expectedDay(d); return s; })();
+
+// Exact day draw (live panel): counts by inverse CDF, each run Erlang(k)
+function dayCostExact(r, d, k){ let s=0; const we=isWeekend(d); for(const w of W){ const n = we?drawCount(r,w.we[0],w.weC):drawCount(r,w.wd[0],w.wdC); const th=w.mean/k; for(let i=0;i<n;i++) s+=erlang(r,k,th);} return s; }
+// Fast day-block draw (backtest): total shape then Gamma ≈ Normal via Box-Muller
+function blockCostFast(r, d0, d1, k){ let s=0; for(const w of W){ let N=0; for(let d=d0; d<=d1; d++){ N += isWeekend(d)?drawCount(r,w.we[0],w.weC):drawCount(r,w.wd[0],w.wdC); } if(N>0){ const th=w.mean/k, sh=N*k; s += Math.max(0, sh*th + Math.sqrt(sh)*th*normal(r)); } } return s; }
+
+// True month generator: growth g, optional runaway job (geometric length via inverse CDF)
+function trueMonth(r, k, spikeP){
+ const g = 1 + 0.07*normal(r);
+ const spike = r() < spikeP; let s0=0, L=0;
+ if(spike){ s0 = 2 + Math.floor(r()*24); L = Math.ceil(Math.log(1-r())/Math.log(1-0.18)); }
+ const daily=[]; for(let d=1; d<=DAYS; d++){ let c = g*dayCostExact(r,d,k); if(spike && d>=s0 && d<s0+L) c += erlang(r,2,150); daily.push(c); }
+ return {daily, spike, s0, L, g};
+}
+// Run-rate multiplier from the last up-to-7 days vs model expectation (shrunk toward 1)
+function runRate(daily, today){ const a=Math.max(1,today-6); let act=0, ex=0; for(let d=a; d<=today; d++){ act+=daily[d-1]; ex+=expectedDay(d);} const rr=act/ex; return Math.min(2.5, Math.max(0.6, 1 + 0.75*(rr-1))); }
+// Uncertainty in the run-rate itself: fewer observed days -> wider spread (lognormal via Box-Muller)
+function rateSig(today){ return 0.30/Math.sqrt(Math.min(today,7)) + 0.04; }
+function drawRate(r, rate, sig){ return rate*Math.exp(sig*normal(r) - sig*sig/2); }
+function quantile(sorted, q){ const i=(sorted.length-1)*q, lo=Math.floor(i), hi=Math.ceil(i); return sorted[lo]+(sorted[hi]-sorted[lo])*(i-lo); }
+
+// ---------- state ----------
+let seed = 138, month = null, sim = null, anim = 0;
+try{ const qs=new URLSearchParams(location.search); const q=parseInt(qs.get('seed'),10); if(q>0) seed=q; }catch(e){}
+const fmt = v => '$' + (v>=1000 ? (v/1000).toFixed(1)+'k' : Math.round(v));
+const fmt2 = v => '$' + (v/1000).toFixed(2) + 'k';
+function params(){ return {day:+$('day').value, budget:+$('budget').value, pct:+$('pct').value, k:+$('burst').value, spikeP:+$('spike').value/100}; }
+
+function buildMonth(){ const p=params(); month = trueMonth(rngFrom(seed*7919+p.k*31+Math.round(p.spikeP*100)), p.k, p.spikeP); }
+
+function simulate(){
+ const p=params(); const r=rngFrom(seed*104729+p.day*13+p.k);
+ const daily=month.daily; let spent=0; const actualCum=[]; for(let d=1; d<=p.day; d++){ spent+=daily[d-1]; actualCum.push(spent); }
+ const rate=runRate(daily,p.day), S=2000, ends=new Float64Array(S), keep=60, paths=[];
+ const sig=rateSig(p.day);
+ for(let s=0;s<S;s++){ let c=spent; const rs=drawRate(r,rate,sig); const path = s<keep?[spent]:null; for(let d=p.day+1; d<=DAYS; d++){ c += rs*dayCostExact(r,d,p.k); if(path) path.push(c);} ends[s]=c; if(path) paths.push(path); }
+ const sorted=Array.from(ends).sort((a,b)=>a-b);
+ // per-day band
+ const band=[]; // P10/P90 per future day using 400 paths
+ const r2=rngFrom(seed*31+p.day); const B=400, cum=[]; for(let s=0;s<B;s++){ let c=spent; const rs=drawRate(r2,rate,sig); const row=[]; for(let d=p.day+1; d<=DAYS; d++){ c+=rs*dayCostExact(r2,d,p.k); row.push(c);} cum.push(row); }
+ for(let j=0;j<DAYS-p.day;j++){ const col=cum.map(row=>row[j]).sort((a,b)=>a-b); band.push([quantile(col,.1),quantile(col,.9)]); }
+ let over=0; for(const v of ends) if(v>p.budget) over++;
+ const trueEnd = daily.reduce((a,b)=>a+b,0);
+ let crossDay=null, c2=0; for(let d=1; d<=DAYS; d++){ c2+=daily[d-1]; if(c2>p.budget){ crossDay=d; break; } }
+ sim = {p, spent, actualCum, ends:sorted, paths, band, rate, over:over/S, q50:quantile(sorted,.5), q90:quantile(sorted,.9), qP:quantile(sorted,1-p.pct/100), trueEnd, crossDay};
+}
+
+// ---------- drawing ----------
+function setupCanvas(cv){ const dpr=Math.min(2,window.devicePixelRatio||1); const w=cv.clientWidth, h=+cv.getAttribute('height'); cv.width=w*dpr; cv.height=h*dpr; cv.style.height=h+'px'; const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); return {ctx,w,h}; }
+function drawFan(progress){
+ const cv=$('fan'); const {ctx,w,h}=setupCanvas(cv); const s=sim, p=s.p;
+ const padL=46, padR=10, padT=10, padB=26; const ymax=Math.max(p.budget*1.25, s.q90*1.08, s.ends[s.ends.length-1]*0.98);
+ const X=d=>padL+(d/DAYS)*(w-padL-padR), Y=v=>h-padB-(v/ymax)*(h-padT-padB);
+ ctx.clearRect(0,0,w,h); ctx.fillStyle='#fbfffd'; ctx.fillRect(0,0,w,h);
+ ctx.strokeStyle='#d9efe6'; ctx.lineWidth=1; ctx.fillStyle='#1e4f53'; ctx.font='11px Inter,sans-serif';
+ for(let i=0;i<=4;i++){ const v=ymax*i/4, y=Y(v); ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke(); ctx.fillText(fmt(v),4,y+4); }
+ for(let d=0; d<=DAYS; d+=5){ ctx.fillText(String(d), X(d)-4, h-8); }
+ // weekend shading
+ ctx.fillStyle='rgba(147,242,200,.25)'; for(let d=1; d<=DAYS; d++) if(isWeekend(d)) ctx.fillRect(X(d-1),padT,X(d)-X(d-1),h-padT-padB);
+ // band
+ const n=s.band.length; const shown=Math.max(1,Math.round(n*progress));
+ ctx.fillStyle='rgba(184,239,62,.45)'; ctx.beginPath(); ctx.moveTo(X(p.day),Y(s.spent));
+ for(let j=0;j<shown;j++) ctx.lineTo(X(p.day+1+j),Y(s.band[j][1]));
+ for(let j=shown-1;j>=0;j--) ctx.lineTo(X(p.day+1+j),Y(s.band[j][0]));
+ ctx.closePath(); ctx.fill();
+ // paths
+ ctx.strokeStyle='rgba(51,196,214,.35)'; ctx.lineWidth=1;
+ for(const path of s.paths){ ctx.beginPath(); ctx.moveTo(X(p.day),Y(path[0])); for(let j=1;j<=shown && j<path.length;j++) ctx.lineTo(X(p.day+j),Y(path[j])); ctx.stroke(); }
+ // budget
+ ctx.strokeStyle='#d81b72'; ctx.lineWidth=2; ctx.setLineDash([6,5]); ctx.beginPath(); ctx.moveTo(padL,Y(p.budget)); ctx.lineTo(w-padR,Y(p.budget)); ctx.stroke(); ctx.setLineDash([]);
+ ctx.fillStyle='#b0115f'; ctx.font='600 11px Inter,sans-serif'; ctx.fillText('budget '+fmt(p.budget), padL+6, Y(p.budget)-6);
+ // actual
+ ctx.strokeStyle='#0f4c52'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(X(0),Y(0)); s.actualCum.forEach((v,i)=>ctx.lineTo(X(i+1),Y(v))); ctx.stroke();
+ ctx.fillStyle='#0f4c52'; ctx.beginPath(); ctx.arc(X(p.day),Y(s.spent),5,0,7); ctx.fill();
+ ctx.fillText('today', Math.min(X(p.day)+8, w-50), Y(s.spent)+16);
+}
+function drawHist(){
+ const cv=$('hist'); const {ctx,w,h}=setupCanvas(cv); const s=sim, p=s.p;
+ const lo=s.ends[0], hi=s.ends[s.ends.length-1]; const xmin=Math.min(lo,p.budget)*0.97, xmax=Math.max(hi,p.budget)*1.03;
+ const bins=40, cnt=new Array(bins).fill(0); for(const v of s.ends){ const b=Math.min(bins-1,Math.floor((v-xmin)/(xmax-xmin)*bins)); cnt[b]++; }
+ const m=Math.max(...cnt), padB=22, bw=(w-10)/bins;
+ ctx.clearRect(0,0,w,h); ctx.fillStyle='#fbfffd'; ctx.fillRect(0,0,w,h);
+ for(let b=0;b<bins;b++){ const x0=xmin+(b+.5)*(xmax-xmin)/bins; const bh=(cnt[b]/m)*(h-padB-8); ctx.fillStyle = x0>p.budget ? '#ff4fa8' : '#93cc22'; ctx.fillRect(5+b*bw+1, h-padB-bh, bw-2, bh); }
+ const X=v=>5+(v-xmin)/(xmax-xmin)*(w-10);
+ ctx.strokeStyle='#d81b72'; ctx.lineWidth=2; ctx.setLineDash([5,4]); ctx.beginPath(); ctx.moveTo(X(p.budget),4); ctx.lineTo(X(p.budget),h-padB); ctx.stroke(); ctx.setLineDash([]);
+ ctx.strokeStyle='#0f4c52'; ctx.beginPath(); ctx.moveTo(X(s.qP),4); ctx.lineTo(X(s.qP),h-padB); ctx.stroke();
+ ctx.fillStyle='#1e4f53'; ctx.font='11px Inter,sans-serif'; ctx.fillText(fmt(xmin),4,h-6); const t=fmt(xmax); ctx.fillText(t,w-ctx.measureText(t).width-4,h-6);
+ ctx.fillStyle='#0f4c52'; ctx.font='600 11px Inter,sans-serif'; const lab='P'+(100-p.pct)+' '+fmt(s.qP); ctx.fillText(lab, Math.min(Math.max(4,X(s.qP)+4), w-ctx.measureText(lab).width-4), 14);
+}
+function weatherSVG(odds){
+ if(odds<0.2) return '<svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="13" fill="#ffa53d"/><g stroke="#ffa53d" stroke-width="4" stroke-linecap="round">'+[0,45,90,135,180,225,270,315].map(a=>{const r=a*Math.PI/180;return `<line x1="${32+20*Math.cos(r)}" y1="${32+20*Math.sin(r)}" x2="${32+27*Math.cos(r)}" y2="${32+27*Math.sin(r)}"/>`}).join('')+'</g></svg>';
+ if(odds<0.5) return '<svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><circle cx="24" cy="24" r="11" fill="#ffa53d"/><path d="M18 48h30a10 10 0 0 0 0-20 14 14 0 0 0-27 3 9 9 0 0 0-3 17z" fill="#66e0ee" stroke="#0f4c52" stroke-width="2"/></svg>';
+ return '<svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><path d="M14 38h34a10 10 0 0 0 0-20 14 14 0 0 0-27 3 9 9 0 0 0-7 17z" fill="#0f4c52"/><path d="M33 38l-6 12h7l-4 10 12-15h-7l4-7z" fill="#ff4fa8"/><g stroke="#66e0ee" stroke-width="3" stroke-linecap="round"><line x1="18" y1="44" x2="15" y2="52"/><line x1="46" y1="44" x2="43" y2="52"/></g></svg>';
+}
+function renderKPIs(){
+ const s=sim, p=s.p; const fires = s.qP > p.budget;
+ $('kP50').textContent=fmt(s.q50); $('kP90').textContent=fmt(s.q90); $('kOver').textContent=Math.round(s.over*100)+'%';
+ $('kAlert').textContent = fires ? 'SEND' : 'HOLD'; $('kAlertK').textContent = '≥'+p.pct+'% alert today';
+ ['g1','g2','g3','g4'].forEach(id=>{ const g=$(id); g.classList.remove('pop'); void g.offsetWidth; if(!reduce) g.classList.add('pop'); });
+ const word = s.over<0.2?'Mostly sunny':s.over<0.5?'Clouds building':'Storm warning';
+ $('weather').innerHTML = weatherSVG(s.over) + `<div><div class="wt">${word}: ${Math.round(s.over*100)}% chance of overspend</div><div class="wd">Spent ${fmt(s.spent)} by day ${p.day}. Recent run-rate ×${s.rate.toFixed(2)} vs plan. ${fires?`Odds are at or above the ${p.pct}% trigger (P${100-p.pct} forecast ${fmt2(s.qP)} > ${fmt2(p.budget)}), so the forecast email goes out today.`:`Odds are below the ${p.pct}% trigger (P${100-p.pct} forecast ${fmt2(s.qP)} ≤ ${fmt2(p.budget)}), so no email yet.`}</div></div>`;
+ const truth = s.crossDay ? `This month's hidden truth: it ends at ${fmt(s.trueEnd)} and crosses the budget on day ${s.crossDay}${month.spike?` (a runaway job started day ${month.s0} and ran ${month.L} days)`:''}. Today's built-in alert would land around day ${Math.min(30,s.crossDay+1)}.` : `This month's hidden truth: it ends at ${fmt(s.trueEnd)}, under budget${month.spike?` despite a runaway job from day ${month.s0} for ${month.L} days`:''}.`;
+ $('fanCap').textContent = truth;
+ $('seedO').textContent = seed;
+}
+
+// ---------- backtest ----------
+const PCTS=[25,50,70,85,95];
+let bt=null;
+function runBacktest(){
+ const p=params(); const r=rngFrom(seed*2654435761%4294967296 + 17);
+ const M=160, F=150; const res=PCTS.map(()=>({early:0,caught:0,fa:0,leads:[]})); let nOver=0, nUnder=0;
+ for(let m=0;m<M;m++){
+  const tm=trueMonth(r,p.k,p.spikeP); const budget = EXP_MONTH*(1.05+0.20*r());
+  let cum=0, cross=null; const cumArr=[]; for(let d=1; d<=DAYS; d++){ cum+=tm.daily[d-1]; cumArr.push(cum); if(cross===null && cum>budget) cross=d; }
+  const overspend = cross!==null; if(overspend) nOver++; else nUnder++;
+  const fired=PCTS.map(()=>null);
+  for(let d=5; d<DAYS; d++){
+   if(cross!==null && d>=cross) break;
+   if(fired.every(x=>x!==null)) break;
+   const spent=cumArr[d-1], rate=runRate(tm.daily,d); const e=new Float64Array(F);
+   const sg=rateSig(d); for(let f=0; f<F; f++) e[f]=spent + drawRate(r,rate,sg)*blockCostFast(r,d+1,DAYS,p.k);
+   const so=Array.from(e).sort((a,b)=>a-b);
+   PCTS.forEach((q,i)=>{ if(fired[i]===null && quantile(so,1-q/100)>budget) fired[i]=d; });
+  }
+  PCTS.forEach((q,i)=>{ const f=fired[i]; if(overspend){ if(f!==null){ res[i].caught++; const lead=cross-f; res[i].leads.push(lead); if(lead>=5) res[i].early++; } } else if(f!==null) res[i].fa++; });
+ }
+ bt={p, nOver, nUnder, rows:PCTS.map((q,i)=>{ const L=res[i].leads.sort((a,b)=>a-b); return {q, early:nOver?res[i].early/nOver:0, recall:nOver?res[i].caught/nOver:0, fa:nUnder?res[i].fa/nUnder:0, lead:L.length?L[Math.floor((L.length-1)/2)]:0}; })};
+ const ok=bt.rows.filter(x=>x.fa<=0.15); bt.pick = ok.length ? ok.reduce((a,b)=> b.early>a.early ? b : a) : bt.rows[bt.rows.length-1];
+ bt.pickOk = ok.length>0;
+ renderBacktest(); renderMemo();
+}
+function pc(x){ return Math.round(x*100)+'%'; }
+function renderBacktest(){
+ if(!bt) return; const cur=+$('pct').value;
+ $('btTable').querySelector('tbody').innerHTML = bt.rows.map(x=>`<tr class="${x===bt.pick?'pick':''} ${x.q===cur?'cur':''}"><td>≥ ${x.q}%${x===bt.pick?' ★':''}</td><td>${pc(x.early)}</td><td>${pc(x.recall)}</td><td>${pc(x.fa)}</td><td>${x.lead} d</td></tr>`).join('');
+ $('btCap').textContent = `${bt.nOver} of 160 months overspent (${pc(bt.nOver/160)}). ★ = highest early-warning rate with false alarms ≤ 15%. Settings: burstiness k=${bt.p.k}, runaway risk ${Math.round(bt.p.spikeP*100)}%, seed ${seed}.`;
+}
+
+// ---------- memo ----------
+function renderMemo(){
+ const s=sim, p=s.p; const fires=s.qP>p.budget;
+ let decision, evidence, risks, plan, next, vp;
+ if(bt){
+  const k=bt.pick, cur=bt.rows.find(x=>x.q===p.pct);
+  const meets = k.early>=0.60 && k.recall>=0.70 && k.lead>=5 && k.fa<=0.15;
+  decision = meets ? `Ship the forecast alert as an opt-in, defaulting to a ${k.q}% odds trigger.` : (bt.pickOk ? `Build it, but run it as a silent shadow test first: a ${k.q}% odds trigger is the best setting, yet it misses ${[k.early<0.6?'the early-warning target':'',k.recall<0.7?'the recall guardrail':'',k.lead<5?'the lead-time guardrail':''].filter(Boolean).join(' and ')}.` : `Don't ship yet: even a 95% odds trigger false-alarms on ${pc(bt.rows[4].fa)} of on-budget months.`);
+  evidence = `Across 160 simulated months (${bt.nOver} overspent), a ${k.q}% odds trigger warned ≥5 days early on ${pc(k.early)} of overspends, caught ${pc(k.recall)} before the cross with a median ${k.lead}-day lead, and false-alarmed on ${pc(k.fa)} of on-budget months. Your current ${p.pct}% setting: ${pc(cur.early)} early, ${pc(cur.fa)} false alarms. Today's threshold alert warns 0 days early by design, and its email can lag up to a day.`;
+  risks = `Lower odds triggers warn earlier but cry wolf. With Budget Viewers now added, one false alarm reaches more people. Runaway jobs that start late in the month can't be forecast, only caught fast. Budgets track list price, not discounts, so the "bill" is an upper-bound proxy.`;
+  plan = `Shadow mode for 4 weeks on budgets with ≥90 days of history: compute the alert, log it, don't email. Compare to the actual month-end, then turn on emails for 10% of opted-in accounts. Stop if false alarms exceed 15% or unsubscribes go above 3%.`;
+  next = `Ask billing engineering for a daily backfill of serverless usage per budget filter, and pair with design on an email that shows the odds and the top two drivers.`;
+  vp = meets ? `"A forecast alert that fires at ${k.q}% odds would have warned ${pc(k.early)} of overspending customers a week ahead, with false alarms on ${pc(k.fa)} of the rest. Let's shadow-test it for a month and then ship."` : `"Forecasting overspend is worth building, but at these settings it's ${bt.pickOk?'not early enough yet':'too noisy'}. Let's shadow-test before any customer gets an email."`;
+ } else {
+  decision = fires ? `For this one customer, the odds have reached the ${p.pct}% trigger: send the warning today. Run the backtest before choosing a default.` : `For this one customer, hold: the odds are still under the ${p.pct}% trigger. Run the backtest before choosing a default.`;
+  evidence = `Day ${p.day}: ${fmt(s.spent)} spent. Month-end P50 ${fmt(s.q50)}, P90 ${fmt(s.q90)}, ${pc(s.over)} chance of exceeding ${fmt(p.budget)}.`;
+  risks = `One month is an anecdote. The trigger trade-off (early vs noisy) only shows up across many months.`;
+  plan = `Press "Backtest 160 months" to compare 25% to 95% triggers against the guardrails.`;
+  next = `Pick a default trigger from the backtest.`;
+  vp = `"We can tell admins a week early when they're likely to blow their budget. I'm sizing how noisy that would be before we commit."`;
+ }
+ $('memoBody').innerHTML = `<dt>Decision</dt><dd>${decision}</dd><dt>Evidence</dt><dd>${evidence}</dd><dt>Risks</dt><dd>${risks}</dd><dt>Rollout plan</dt><dd>${plan}</dd><dt>Next step</dt><dd>${next}</dd>`;
+ $('vpLine').innerHTML = `What I'd tell the VP in one sentence: ${vp}`;
+}
+
+// ---------- wiring ----------
+function animate(){ cancelAnimationFrame(anim); if(reduce){ drawFan(1); return; } const t0=performance.now(), dur=1100; const step=t=>{ const k=Math.min(1,(t-t0)/dur); drawFan(1-Math.pow(1-k,3)); if(k<1) anim=requestAnimationFrame(step); }; anim=requestAnimationFrame(step); }
+function refresh(newMonth){ if(newMonth||!month) buildMonth(); simulate(); animate(); drawHist(); renderKPIs(); renderMemo(); renderBacktest(); }
+function labels(){ $('dayO').textContent=$('day').value; $('budgetO').textContent=fmt(+$('budget').value); $('pctO').textContent=$('pct').value+'%'; $('burstO').textContent=$('burst').value; $('spikeO').textContent=$('spike').value+'%'; }
+let deb=0; function onInput(newMonth){ labels(); clearTimeout(deb); deb=setTimeout(()=>refresh(newMonth),60); }
+$('day').addEventListener('input',()=>onInput(false));
+$('budget').addEventListener('input',()=>onInput(false));
+$('pct').addEventListener('change',()=>{ labels(); refresh(false); });
+$('burst').addEventListener('input',()=>{ bt=null; resetBt(); onInput(true); });
+$('spike').addEventListener('input',()=>{ bt=null; resetBt(); onInput(true); });
+$('reroll').addEventListener('click',()=>{ seed = 1 + Math.floor(Math.random()*9999); bt=null; resetBt(); refresh(true); });
+$('runbt').addEventListener('click',()=>{ const b=$('runbt'); b.textContent='Running…'; b.disabled=true; setTimeout(()=>{ runBacktest(); b.textContent='Backtest 160 months'; b.disabled=false; },30); });
+function resetBt(){ $('btTable').querySelector('tbody').innerHTML='<tr><td colspan="5">Settings changed. Press "Backtest 160 months".</td></tr>'; $('btCap').textContent=''; }
+let rz=0; window.addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(sim){ drawFan(1); drawHist(); } },120); });
+labels(); refresh(true);
+setTimeout(runBacktest, 400);
+})();
+</script>
+</body>
+</html>
